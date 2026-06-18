@@ -10,6 +10,7 @@ import java.util.List;
 @Repository
 public interface AlertRepository extends JpaRepository<Alert, Long> {
     List<Alert> findByPanelId(String panelId);
+    List<Alert> findByPanelIdIn(java.util.Collection<String> panelIds);
     List<Alert> findByAcknowledged(Boolean acknowledged);
     List<Alert> findBySeverity(String severity);
     List<Alert> findByStatus(Alert.AlertStatus status);

@@ -15,7 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -197,7 +199,16 @@ public class PredictionService {
         response.setDescription(result.getDescription());
         response.setMaintenanceRecommendation(result.getMaintenanceRecommendation());
         response.setTimestamp(result.getCreatedAt());
-        
+
+        // Always populate inputValues from stored entity columns
+        Map<String, Object> inputValues = new HashMap<>();
+        inputValues.put("voltage",     result.getVoltage());
+        inputValues.put("current",     result.getCurrent());
+        inputValues.put("temperature", result.getTemperature());
+        inputValues.put("irradiance",  result.getIrradiance());
+        inputValues.put("power",       result.getPower());
+        response.setInputValues(inputValues);
+
         return response;
     }
     

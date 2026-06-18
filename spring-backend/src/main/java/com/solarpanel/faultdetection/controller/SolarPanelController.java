@@ -65,4 +65,10 @@ public class SolarPanelController {
         panelService.deletePanel(id);
         return ResponseEntity.noContent().build();
     }
+    
+    @GetMapping("/{id}/history")
+    public ResponseEntity<?> getPanelHistory(@PathVariable Long id) {
+        log.info("REST request to get history for panel: {}", id);
+        return ResponseEntity.ok(panelService.getPanelHistory(id));
+    }
 }

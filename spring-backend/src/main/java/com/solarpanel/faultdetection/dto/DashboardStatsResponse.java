@@ -21,6 +21,7 @@ public class DashboardStatsResponse {
     private Long highAlerts;
     private Long mediumAlerts;
     private Long lowAlerts;
+    private Long unacknowledgedAlerts;
     private Map<String, Long> faultDistribution;
     private Map<String, Long> alertsByStatus;
 }

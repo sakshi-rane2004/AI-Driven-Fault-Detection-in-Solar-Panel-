@@ -29,6 +29,9 @@ public class SolarPlant {
     @Column(nullable = false)
     private Double capacityKW;
     
+    @Column
+    private Long userId;   // owner — null means shared/admin-created
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
     

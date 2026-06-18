@@ -4,97 +4,122 @@ import com.solarpanel.faultdetection.dto.PredictionResponse;
 import com.solarpanel.faultdetection.dto.SensorDataDTO;
 import com.solarpanel.faultdetection.dto.SensorDataRequest;
 import com.solarpanel.faultdetection.entity.Alert;
-import com.solarpanel.faultdetection.entity.PredictionResult;
 import com.solarpanel.faultdetection.entity.SensorData;
 import com.solarpanel.faultdetection.repository.AlertRepository;
 import com.solarpanel.faultdetection.repository.SensorDataRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class SensorDataService {
-    
+
     private final SensorDataRepository sensorDataRepository;
     private final AlertRepository alertRepository;
     private final PredictionService predictionService;
-    
-    @Transactional
-    public PredictionResponse processSensorData(SensorDataDTO sensorDataDTO) {
-        log.info("Processing sensor data for panel: {}", sensorDataDTO.getPanelId());
-        
-        // 1. Save sensor data
-        SensorData sensorData = new SensorData();
-        sensorData.setPanelId(sensorDataDTO.getPanelId());
-        sensorData.setVoltage(sensorDataDTO.getVoltage());
-        sensorData.setCurrent(sensorDataDTO.getCurrent());
-        sensorData.setTemperature(sensorDataDTO.getTemperature());
-        sensorData.setIrradiance(sensorDataDTO.getIrradiance());
-        sensorData.setPower(sensorDataDTO.getPower());
-        sensorData.setTimestamp(sensorDataDTO.getTimestamp() != null ? 
-            sensorDataDTO.getTimestamp() : LocalDateTime.now());
-        
-        sensorDataRepository.save(sensorData);
-        log.info("Sensor data saved with ID: {}", sensorData.getId());
-        
-        // 2. Create prediction request
-        SensorDataRequest predictionRequest = new SensorDataRequest();
-        predictionRequest.setVoltage(sensorDataDTO.getVoltage());
-        predictionRequest.setCurrent(sensorDataDTO.getCurrent());
-        predictionRequest.setTemperature(sensorDataDTO.getTemperature());
-        predictionRequest.setIrradiance(sensorDataDTO.getIrradiance());
-        predictionRequest.setPower(sensorDataDTO.getPower());
-        
-        // 3. Get ML prediction
-        PredictionResponse prediction = predictionService.analyzeSensorData(predictionRequest);
-        log.info("ML prediction completed: {} - {}", prediction.getPredictedFault(), prediction.getSeverity());
-        
-        // 4. Generate alert if fault detected
-        if (!"NORMAL".equals(prediction.getPredictedFault())) {
-            generateAlert(sensorDataDTO.getPanelId(), prediction);
+
+    // Self-inject via proxy so @Transactional(REQUIRES_NEW) is honoured on internal calls
+    @Autowired
+    @Lazy
+    private SensorDataService self;
+
+    public SensorDataService(SensorDataRepository sensorDataRepository,
+                             AlertRepository alertRepository,
+                             PredictionService predictionService) {
+        this.sensorDataRepository = sensorDataRepository;
+        this.alertRepository = alertRepository;
+        this.predictionService = predictionService;
+    }
+
+    /**
+     * Main entry point — no @Transactional here so each step manages its own transaction.
+     */
+    public PredictionResponse processSensorData(SensorDataDTO dto) {
+        log.info("Processing sensor data for panel: {}", dto.getPanelId());
+
+        // 1. Persist sensor data in its own committed transaction
+        self.saveSensorData(dto);
+
+        // 2. Build prediction request
+        SensorDataRequest req = new SensorDataRequest();
+        req.setVoltage(dto.getVoltage());
+        req.setCurrent(dto.getCurrent());
+        req.setTemperature(dto.getTemperature());
+        req.setIrradiance(dto.getIrradiance());
+        req.setPower(dto.getPower());
+
+        // 3. Call ML API — degrade gracefully if unavailable
+        PredictionResponse prediction;
+        try {
+            prediction = predictionService.analyzeSensorData(req);
+            log.info("ML prediction: {} - {}", prediction.getPredictedFault(), prediction.getSeverity());
+        } catch (Exception e) {
+            log.warn("ML API unavailable — sensor data saved without prediction: {}", e.getMessage());
+            PredictionResponse fallback = new PredictionResponse();
+            fallback.setPredictedFault("UNKNOWN");
+            fallback.setConfidence("LOW");
+            fallback.setConfidenceScore(0.0);
+            fallback.setSeverity("UNKNOWN");
+            fallback.setDescription("ML API unavailable. Sensor data was saved successfully.");
+            fallback.setMaintenanceRecommendation("Start the Python ML API (python api/app.py) to enable predictions.");
+            fallback.setTimestamp(LocalDateTime.now());
+            return fallback;
         }
-        
+
+        // 4. Generate alert if a fault was detected
+        if (!"NORMAL".equals(prediction.getPredictedFault())) {
+            self.saveAlert(dto.getPanelId(), prediction);
+        }
+
         return prediction;
     }
-    
-    private void generateAlert(String panelId, PredictionResponse prediction) {
-        log.info("Generating alert for panel {} - Fault: {}", panelId, prediction.getPredictedFault());
-        
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveSensorData(SensorDataDTO dto) {
+        SensorData entity = new SensorData();
+        entity.setPanelId(dto.getPanelId());
+        entity.setVoltage(dto.getVoltage());
+        entity.setCurrent(dto.getCurrent());
+        entity.setTemperature(dto.getTemperature());
+        entity.setIrradiance(dto.getIrradiance());
+        entity.setPower(dto.getPower());
+        entity.setTimestamp(dto.getTimestamp() != null ? dto.getTimestamp() : LocalDateTime.now());
+        sensorDataRepository.save(entity);
+        log.info("Sensor data committed for panel: {}", dto.getPanelId());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveAlert(String panelId, PredictionResponse prediction) {
+        log.info("Generating alert for panel {} — fault: {}", panelId, prediction.getPredictedFault());
         Alert alert = new Alert();
         alert.setPanelId(panelId);
         alert.setFaultType(prediction.getPredictedFault());
         alert.setSeverity(prediction.getSeverity());
-        alert.setMessage(generateAlertMessage(prediction.getPredictedFault(), prediction.getSeverity()));
+        alert.setMessage(buildAlertMessage(prediction.getPredictedFault(), prediction.getSeverity()));
         alert.setConfidence(prediction.getConfidence());
         alert.setConfidenceScore(prediction.getConfidenceScore());
         alert.setCreatedAt(LocalDateTime.now());
         alert.setAcknowledged(false);
-        
         alertRepository.save(alert);
-        log.info("Alert created with ID: {}", alert.getId());
+        log.info("Alert saved for panel: {}", panelId);
     }
-    
-    private String generateAlertMessage(String faultType, String severity) {
-        String severityText = severity.equals("CRITICAL") ? "Critical" : 
-                             severity.equals("HIGH") ? "High" : 
-                             severity.equals("MEDIUM") ? "Medium" : "Low";
-        
+
+    private String buildAlertMessage(String faultType, String severity) {
+        String s = "CRITICAL".equals(severity) ? "Critical" :
+                   "HIGH".equals(severity)     ? "High"     :
+                   "MEDIUM".equals(severity)   ? "Medium"   : "Low";
         switch (faultType) {
-            case "INVERTER_FAULT":
-                return severityText + " severity inverter fault detected. Immediate inspection recommended.";
-            case "PARTIAL_SHADING":
-                return severityText + " severity partial shading detected. Check for obstructions.";
-            case "PANEL_DEGRADATION":
-                return severityText + " severity panel degradation detected. Performance monitoring required.";
-            case "DUST_ACCUMULATION":
-                return severityText + " severity dust accumulation detected. Cleaning recommended.";
-            default:
-                return severityText + " severity fault detected in solar panel.";
+            case "INVERTER_FAULT":    return s + " severity inverter fault detected. Immediate inspection recommended.";
+            case "PARTIAL_SHADING":   return s + " severity partial shading detected. Check for obstructions.";
+            case "PANEL_DEGRADATION": return s + " severity panel degradation detected. Performance monitoring required.";
+            case "DUST_ACCUMULATION": return s + " severity dust accumulation detected. Cleaning recommended.";
+            default:                  return s + " severity fault detected in solar panel.";
         }
     }
 }

@@ -1,35 +1,27 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+
+const ROLE_COLOR = {
+  ADMIN: '#ef4444',
+  TECHNICIAN: '#f59e0b',
+  VIEWER: '#10b981',
+};
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, switchRole, logout } = useAuth();
-  const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
+  const { user, logout } = useAuth();
 
-  const isActive = (path) => {
-    return location.pathname === path ? 'nav-link active' : 'nav-link';
-  };
+  const isActive = (path) =>
+    location.pathname === path ? 'nav-link active' : 'nav-link';
 
-  const handleRoleSwitch = (role) => {
-    switchRole(role);
-    setShowRoleSwitcher(false);
-  };
-
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
-  const getRoleBadgeColor = (role) => {
-    switch(role) {
-      case 'ADMIN': return '#dc3545';
-      case 'TECHNICIAN': return '#ffc107';
-      case 'VIEWER': return '#28a745';
-      default: return '#6c757d';
-    }
-  };
+  const roleColor = ROLE_COLOR[user?.role] || '#6b7280';
 
   return (
     <header className="header">
@@ -38,98 +30,54 @@ const Header = () => {
           <div className="logo">
             <h1>Solar Panel Fault Detection</h1>
           </div>
+
           <nav className="nav">
-            <Link to="/" className={isActive('/')}>
-              Dashboard
-            </Link>
-            <Link to="/panels" className={isActive('/panels')}>
-              Panels
-            </Link>
-            <Link to="/alerts" className={isActive('/alerts')}>
-              Alerts
-            </Link>
-            <Link to="/analyze" className={isActive('/analyze')}>
-              Analyze
-            </Link>
-            <Link to="/history" className={isActive('/history')}>
-              Reports
-            </Link>
-            <Link to="/analytics" className={isActive('/analytics')}>
-              Analytics
-            </Link>
-            <Link to="/settings" className={isActive('/settings')}>
-              Settings
-            </Link>
-            <Link to="/admin/users" className={isActive('/admin/users')}>
-              Users
-            </Link>
+            <Link to="/" className={isActive('/')}>Dashboard</Link>
+            <Link to="/panels" className={isActive('/panels')}>Panels</Link>
+            <Link to="/alerts" className={isActive('/alerts')}>Alerts</Link>
+            <Link to="/analyze" className={isActive('/analyze')}>Analyze</Link>
+            <Link to="/history" className={isActive('/history')}>Reports</Link>
+            <Link to="/analytics" className={isActive('/analytics')}>Analytics</Link>
+            <Link to="/settings" className={isActive('/settings')}>Settings</Link>
           </nav>
-          
-          {/* Demo Role Switcher */}
+
           <div className="header-user-section">
-            <div className="role-switcher-container">
-              <button 
-                className="role-badge"
-                onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
-                style={{ backgroundColor: getRoleBadgeColor(user?.role) }}
-                title="Switch role (Demo mode)"
-              >
-                👤 {user?.role || 'ADMIN'}
-              </button>
-              
-              {showRoleSwitcher && (
-                <div className="role-switcher-dropdown">
-                  <div className="role-switcher-header">
-                    <span>🎭 Demo Mode</span>
-                    <button 
-                      className="close-btn"
-                      onClick={() => setShowRoleSwitcher(false)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <div className="role-switcher-options">
-                    <button 
-                      className={`role-option ${user?.role === 'ADMIN' ? 'active' : ''}`}
-                      onClick={() => handleRoleSwitch('ADMIN')}
-                    >
-                      <span className="role-icon">👑</span>
-                      <div className="role-info">
-                        <strong>Admin</strong>
-                        <small>Full access to all features</small>
-                      </div>
-                    </button>
-                    <button 
-                      className={`role-option ${user?.role === 'TECHNICIAN' ? 'active' : ''}`}
-                      onClick={() => handleRoleSwitch('TECHNICIAN')}
-                    >
-                      <span className="role-icon">🔧</span>
-                      <div className="role-info">
-                        <strong>Technician</strong>
-                        <small>Manage panels and alerts</small>
-                      </div>
-                    </button>
-                    <button 
-                      className={`role-option ${user?.role === 'VIEWER' ? 'active' : ''}`}
-                      onClick={() => handleRoleSwitch('VIEWER')}
-                    >
-                      <span className="role-icon">👁️</span>
-                      <div className="role-info">
-                        <strong>Viewer</strong>
-                        <small>Read-only access</small>
-                      </div>
-                    </button>
-                  </div>
+            {/* User info — read only, no switching */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '6px 14px', borderRadius: 20,
+              background: 'rgba(255,255,255,0.12)',
+              border: '1px solid rgba(255,255,255,0.18)',
+            }}>
+              {/* Avatar circle */}
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: roleColor, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: 12, fontWeight: 800,
+                color: '#fff', flexShrink: 0,
+              }}>
+                {user?.firstName?.[0] || user?.username?.[0] || 'U'}
+              </div>
+              <div style={{ lineHeight: 1.2 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>
+                  {user?.firstName
+                    ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`
+                    : user?.username}
                 </div>
-              )}
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: roleColor,
+                  textTransform: 'uppercase', letterSpacing: '0.6px',
+                }}>
+                  {user?.role}
+                </div>
+              </div>
             </div>
 
-            <button 
+            <button
               className="logout-btn"
               onClick={handleLogout}
               title="Logout"
             >
-              <span className="logout-icon"></span>
               <span className="logout-text">Logout</span>
             </button>
           </div>

@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.AssertTrue;
 
 public class RegisterRequest {
     
@@ -33,19 +32,6 @@ public class RegisterRequest {
     
     // Flag to indicate if this is an admin-created user (bypasses role validation)
     private boolean adminCreated = false;
-    
-    /**
-     * Validation method to ensure only VIEWER role for public registration
-     */
-    @AssertTrue(message = "Public registration only allows VIEWER role. Contact administrator for additional access.")
-    public boolean isValidRoleForPublicRegistration() {
-        // If this is admin-created, allow any role
-        if (adminCreated) {
-            return true;
-        }
-        // For public registration, only allow VIEWER
-        return role == User.Role.VIEWER;
-    }
     
     // Default constructor
     public RegisterRequest() {}

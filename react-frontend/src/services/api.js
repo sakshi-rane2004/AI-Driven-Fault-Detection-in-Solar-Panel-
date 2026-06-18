@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: 'http://localhost:8081/api/v1',
+  baseURL: 'http://localhost:8085/api/v1',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -30,12 +30,12 @@ api.interceptors.response.use(
   },
   (error) => {
     console.error('Response error:', error);
-    
+
     if (error.response) {
       // Server responded with error status
       const { status, data } = error.response;
       console.error(`HTTP ${status}:`, data);
-      
+
       if (status === 404) {
         throw new Error('Resource not found');
       } else if (status === 500) {
@@ -47,7 +47,7 @@ api.interceptors.response.use(
       // Network error
       throw new Error('Network error. Please check your connection and try again.');
     }
-    
+
     throw error;
   }
 );
@@ -256,6 +256,74 @@ export const panelAPI = {
     } catch (error) {
       throw new Error(`Failed to delete panel: ${error.message}`);
     }
+  },
+
+  // Get panel history (sensor data + alerts)
+  getPanelHistory: async (id) => {
+    try {
+      const response = await api.get(`/panels/${id}/history`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch panel history: ${error.message}`);
+    }
+  },
+
+  // Push a simulated sensor reading for a panel (60% normal, 40% faulty)
+  simulateSensorData: async (panelId) => {
+    try {
+      const rand = Math.random();
+      let voltage, current, temperature, irradiance, power;
+
+      if (rand < 0.60) {
+        // NORMAL operating conditions
+        voltage = +(Math.random() * 5 + 30).toFixed(2);   // 30–35 V
+        current = +(Math.random() * 1.5 + 7.5).toFixed(2);  // 7.5–9 A
+        temperature = +(Math.random() * 10 + 20).toFixed(2);   // 20–30 °C
+        irradiance = +(Math.random() * 200 + 800).toFixed(2);  // 800–1000 W/m²
+        power = +(voltage * current).toFixed(2);
+      } else if (rand < 0.70) {
+        // INVERTER_FAULT — low voltage, high temp, low power
+        voltage = +(Math.random() * 4 + 18).toFixed(2);   // 18–22 V
+        current = +(Math.random() * 1.5 + 6).toFixed(2);    // 6–7.5 A
+        temperature = +(Math.random() * 10 + 40).toFixed(2);   // 40–50 °C
+        irradiance = +(Math.random() * 100 + 800).toFixed(2);  // 800–900 W/m²
+        power = +(Math.random() * 40 + 120).toFixed(2);  // 120–160 W
+      } else if (rand < 0.80) {
+        // PARTIAL_SHADING — reduced voltage & current, low irradiance
+        voltage = +(Math.random() * 3 + 25).toFixed(2);   // 25–28 V
+        current = +(Math.random() * 1.5 + 4).toFixed(2);    // 4–5.5 A
+        temperature = +(Math.random() * 6 + 22).toFixed(2);   // 22–28 °C
+        irradiance = +(Math.random() * 150 + 500).toFixed(2);  // 500–650 W/m²
+        power = +(Math.random() * 40 + 110).toFixed(2);  // 110–150 W
+      } else if (rand < 0.90) {
+        // PANEL_DEGRADATION — slightly low power, elevated temp
+        voltage = +(Math.random() * 4 + 28).toFixed(2);   // 28–32 V
+        current = +(Math.random() * 1.5 + 6.5).toFixed(2);  // 6.5–8 A
+        temperature = +(Math.random() * 6 + 42).toFixed(2);   // 42–48 °C
+        irradiance = +(Math.random() * 100 + 850).toFixed(2);  // 850–950 W/m²
+        power = +(Math.random() * 40 + 180).toFixed(2);  // 180–220 W
+      } else {
+        // DUST_ACCUMULATION — low irradiance, slightly reduced power
+        voltage = +(Math.random() * 4 + 29).toFixed(2);   // 29–33 V
+        current = +(Math.random() * 1.5 + 7).toFixed(2);    // 7–8.5 A
+        temperature = +(Math.random() * 8 + 24).toFixed(2);   // 24–32 °C
+        irradiance = +(Math.random() * 150 + 550).toFixed(2);  // 550–700 W/m²
+        power = +(Math.random() * 40 + 200).toFixed(2);  // 200–240 W
+      }
+
+      const response = await api.post('/sensor-data', {
+        panelId,
+        voltage,
+        current,
+        temperature,
+        irradiance,
+        power,
+        timestamp: new Date().toISOString()
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to simulate sensor data: ${error.message}`);
+    }
   }
 };
 
@@ -430,11 +498,24 @@ export const authAPI = {
   register: async (userData) => {
     try {
       const response = await api.post('/auth/register', userData);
-      // Store token and user info
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data));
-        // Set token in axios headers
+        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      }
+      return response.data;
+    } catch (error) {
+      throw new Error(`Registration failed: ${error.message}`);
+    }
+  },
+
+  // Register via admin endpoint (for ADMIN / TECHNICIAN roles)
+  registerAsAdmin: async (userData) => {
+    try {
+      const response = await api.post('/auth/admin/create-user', { ...userData, adminCreated: true });
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data));
         api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       }
       return response.data;

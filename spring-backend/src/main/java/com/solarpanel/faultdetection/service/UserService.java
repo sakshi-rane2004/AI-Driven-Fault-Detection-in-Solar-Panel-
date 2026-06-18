@@ -62,12 +62,10 @@ public class UserService implements UserDetailsService {
     public AuthResponse registerUser(RegisterRequest registerRequest) {
         logger.info("Registering new user: {}", registerRequest.getUsername());
         
-        // Security: Only allow VIEWER role for public registration
-        // ADMIN and TECHNICIAN accounts must be created by existing ADMINs
-        if (registerRequest.getRole() != User.Role.VIEWER) {
-            logger.warn("Attempted registration with non-VIEWER role: {} for user: {}", 
-                registerRequest.getRole(), registerRequest.getUsername());
-            throw new RuntimeException("Public registration is only allowed for VIEWER role. Contact your administrator for additional access.");
+        // Allow VIEWER and TECHNICIAN roles for public registration
+        // ADMIN accounts must still be created by an existing admin
+        if (registerRequest.getRole() == User.Role.ADMIN) {
+            throw new RuntimeException("Admin accounts cannot be self-registered. Contact an existing administrator.");
         }
         
         // Check if username already exists

@@ -9,7 +9,7 @@ import random
 from datetime import datetime
 
 # Configuration
-API_URL = "http://localhost:8081/api/v1/sensor-data"
+API_URL = "http://localhost:8085/api/v1/sensor-data"
 PANEL_IDS = ["P001", "P002", "P003", "P004", "P005"]
 INTERVAL_SECONDS = 10  # Send data every 10 seconds
 

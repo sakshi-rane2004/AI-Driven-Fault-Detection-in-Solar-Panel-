@@ -33,6 +33,36 @@ public class AuthController {
     private PasswordStrengthService passwordStrengthService;
     
     /**
+     * Get all users (admin only)
+     */
+    @GetMapping("/users")
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            Optional<User> currentUser = userService.getCurrentUser();
+            if (currentUser.isEmpty() || currentUser.get().getRole() != User.Role.ADMIN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Admin access required"));
+            }
+            java.util.List<User> users = userService.getAllUsers();
+            java.util.List<Map<String, Object>> result = new java.util.ArrayList<>();
+            for (User u : users) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", u.getId());
+                m.put("username", u.getUsername());
+                m.put("email", u.getEmail());
+                m.put("firstName", u.getFirstName());
+                m.put("lastName", u.getLastName());
+                m.put("role", u.getRole());
+                m.put("enabled", u.getEnabled());
+                result.add(m);
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
      * User login
      */
     @PostMapping("/login")

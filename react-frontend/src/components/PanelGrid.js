@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { panelAPI } from '../services/api';
 
-const PanelGrid = ({ onPanelClick, panels: propPanels }) => {
+const PanelGrid = ({ onPanelClick, panels: propPanels, selectedPanelId }) => {
   const [panels, setPanels] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPanel, setSelectedPanel] = useState(null);
   const [draggedPanel, setDraggedPanel] = useState(null);
 
   // Use panels from props if provided, otherwise fetch
@@ -56,7 +55,6 @@ const PanelGrid = ({ onPanelClick, panels: propPanels }) => {
   };
 
   const handlePanelClick = (panel) => {
-    setSelectedPanel(panel);
     if (onPanelClick) {
       onPanelClick(panel);
     }
@@ -81,7 +79,7 @@ const PanelGrid = ({ onPanelClick, panels: propPanels }) => {
 
   const handleDrop = (e, targetPanel) => {
     e.preventDefault();
-    
+
     if (!draggedPanel || draggedPanel.id === targetPanel.id) {
       return;
     }
@@ -97,7 +95,7 @@ const PanelGrid = ({ onPanelClick, panels: propPanels }) => {
     const newPanels = [...panels];
     newPanels.splice(draggedIndex, 1);
     newPanels.splice(targetIndex, 0, draggedPanel);
-    
+
     setPanels(newPanels);
   };
 
@@ -139,14 +137,14 @@ const PanelGrid = ({ onPanelClick, panels: propPanels }) => {
           panels.map((panel) => (
             <div
               key={panel.id}
-              className={`panel-tile ${panel.status ? panel.status.toLowerCase() : 'unknown'} ${selectedPanel?.id === panel.id ? 'selected' : ''} ${draggedPanel?.id === panel.id ? 'dragging' : ''}`}
+              className={`panel-tile ${panel.status ? panel.status.toLowerCase() : 'unknown'} ${selectedPanelId === panel.id ? 'selected' : ''} ${draggedPanel?.id === panel.id ? 'dragging' : ''}`}
               onClick={() => handlePanelClick(panel)}
               draggable="true"
               onDragStart={(e) => handleDragStart(e, panel)}
               onDragEnd={handleDragEnd}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, panel)}
-              style={{ 
+              style={{
                 borderColor: getHealthColor(panel.status || 'OFFLINE'),
                 cursor: 'move'
               }}
@@ -165,57 +163,6 @@ const PanelGrid = ({ onPanelClick, panels: propPanels }) => {
           ))
         )}
       </div>
-
-      {selectedPanel && (
-        <div className="panel-details-modal" onClick={() => setSelectedPanel(null)}>
-          <div className="panel-details-content" onClick={(e) => e.stopPropagation()}>
-            <div className="panel-details-header">
-              <h4>Panel {selectedPanel.panelId || 'N/A'} Details</h4>
-              <button 
-                className="panel-details-close"
-                onClick={() => setSelectedPanel(null)}
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="panel-details-grid">
-              <div className="panel-detail-item">
-                <label>Status</label>
-                <div className={`panel-status ${selectedPanel.status ? selectedPanel.status.toLowerCase() : 'unknown'}`}>
-                  {getHealthIcon(selectedPanel.status || 'OFFLINE')} {selectedPanel.status || 'UNKNOWN'}
-                </div>
-              </div>
-              
-              <div className="panel-detail-item">
-                <label>Plant</label>
-                <div>{selectedPanel.plantName || 'Unknown'}</div>
-              </div>
-              
-              <div className="panel-detail-item">
-                <label>Capacity</label>
-                <div>{selectedPanel.capacity || 0}W</div>
-              </div>
-              
-              <div className="panel-detail-item">
-                <label>Installation Date</label>
-                <div>{selectedPanel.installationDate ? new Date(selectedPanel.installationDate).toLocaleDateString() : 'N/A'}</div>
-              </div>
-              
-              {selectedPanel.assignedTechnicianId && (
-                <div className="panel-detail-item">
-                  <label>Assigned Technician</label>
-                  <div>ID: {selectedPanel.assignedTechnicianId}</div>
-                </div>
-              )}
-            </div>
-            
-            <div className="panel-details-footer">
-              <small>Created: {selectedPanel.createdAt ? new Date(selectedPanel.createdAt).toLocaleString() : 'N/A'}</small>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

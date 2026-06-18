@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
         role: 'VIEWER'
       }
     };
-    
+
     setUser(roleUsers[role]);
   };
 
@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }) => {
           if (currentUser) {
             setUser(currentUser);
             setIsLoggedIn(true);
-            
+
             // Validate token with server
             try {
               await authAPI.validateToken();
@@ -82,10 +82,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await authAPI.login(credentials);
-      
+
       setUser(response);
       setIsLoggedIn(true);
-      
+
       return response;
     } catch (error) {
       throw error;
@@ -94,14 +94,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (userData) => {
+  const register = async (userData, useAdminEndpoint = false) => {
     try {
       setLoading(true);
-      const response = await authAPI.register(userData);
-      
+      const response = useAdminEndpoint
+        ? await authAPI.registerAsAdmin(userData)
+        : await authAPI.register(userData);
       setUser(response);
       setIsLoggedIn(true);
-      
       return response;
     } catch (error) {
       throw error;
@@ -165,42 +165,16 @@ export const AuthProvider = ({ children }) => {
     return userHasRole('VIEWER');
   };
 
-  // Access control based on new role requirements
-  const canAccessAnalytics = () => {
-    return userHasAnyRole(['ADMIN']); // Only Admin can access analytics
-  };
-
-  const canAccessHistory = () => {
-    return userHasAnyRole(['ADMIN']); // Only Admin can access reports
-  };
-
-  const canAnalyze = () => {
-    return userHasAnyRole(['ADMIN', 'TECHNICIAN']); // Admin and Technician can analyze
-  };
-
-  const canAccessPanels = () => {
-    return userHasAnyRole(['ADMIN', 'TECHNICIAN']); // Admin and Technician can access panels
-  };
-
-  const canAccessAlerts = () => {
-    return userHasAnyRole(['ADMIN', 'TECHNICIAN']); // Admin and Technician can access alerts
-  };
-
-  const canAccessSettings = () => {
-    return isAdmin(); // Only Admin can access settings
-  };
-
-  const canAccessUserManagement = () => {
-    return isAdmin(); // Only Admin can manage users
-  };
-
-  const canAssignWork = () => {
-    return isAdmin(); // Only Admin can assign work
-  };
-
-  const hasFullAccess = () => {
-    return isAdmin(); // Only Admin has full access
-  };
+  // Access control — all logged-in users get full access to their own data
+  const canAccessAnalytics = () => !!user;
+  const canAccessHistory = () => !!user;
+  const canAnalyze = () => !!user;
+  const canAccessPanels = () => !!user;
+  const canAccessAlerts = () => !!user;
+  const canAccessSettings = () => isAdmin();
+  const canAccessUserManagement = () => isAdmin();
+  const canAssignWork = () => isAdmin();
+  const hasFullAccess = () => isAdmin();
 
   const value = {
     user,

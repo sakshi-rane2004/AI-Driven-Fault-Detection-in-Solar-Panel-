@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -14,18 +14,54 @@ import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import AdminUserManagement from './pages/AdminUserManagement';
 import PlantManagement from './pages/PlantManagement';
-import PanelManagement from './pages/PanelManagement';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ApiTest from './components/ApiTest';
 import './App.css';
 
+/* Redirect to /login if not authenticated */
+const ProtectedLayout = ({ sidebarCollapsed, toggleSidebar }) => {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f8fafc' }}>
+      <div style={{
+        width: 36, height: 36, border: '3px solid #e2e8f0', borderTopColor: '#0d9488',
+        borderRadius: '50%', animation: 'spin 1s linear infinite'
+      }} />
+      <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
+    </div>
+  );
+  if (!user) return <Navigate to="/login" replace />;
+  return (
+    <>
+      <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+      <div className={`main-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+        <Header />
+        <main className="main-content">
+          <div className="container">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/panels" element={<Panels />} />
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/analyze" element={<Analyze />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/admin/users" element={<AdminUserManagement />} />
+              <Route path="/plants" element={<PlantManagement />} />
+              <Route path="/test" element={<ApiTest />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </main>
+      </div>
+    </>
+  );
+};
+
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
 
   return (
     <ThemeProvider>
@@ -33,39 +69,13 @@ function App() {
         <Router>
           <div className="App">
             <Routes>
-              {/* Auth routes without sidebar */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              
-              {/* Main app routes with sidebar */}
               <Route path="/*" element={
-                <>
-                  <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-                  <div className={`main-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-                    <Header />
-                    <main className="main-content">
-                      <div className="container">
-                        <Routes>
-                          <Route path="/" element={<Dashboard />} />
-                          <Route path="/panels" element={<Panels />} />
-                          <Route path="/alerts" element={<Alerts />} />
-                          <Route path="/analyze" element={<Analyze />} />
-                          <Route path="/history" element={<History />} />
-                          <Route path="/analytics" element={<Analytics />} />
-                          <Route path="/profile" element={<Profile />} />
-                          <Route path="/settings" element={<Settings />} />
-                          <Route path="/admin/users" element={<AdminUserManagement />} />
-                          <Route path="/plants" element={<PlantManagement />} />
-                          <Route path="/manage-panels" element={<PanelManagement />} />
-                          <Route path="/test" element={<ApiTest />} />
-                          
-                          {/* Redirect unknown routes to dashboard */}
-                          <Route path="*" element={<Navigate to="/" replace />} />
-                        </Routes>
-                      </div>
-                    </main>
-                  </div>
-                </>
+                <ProtectedLayout
+                  sidebarCollapsed={sidebarCollapsed}
+                  toggleSidebar={() => setSidebarCollapsed(s => !s)}
+                />
               } />
             </Routes>
           </div>
