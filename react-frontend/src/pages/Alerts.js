@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { alertAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const SEV = {
   CRITICAL: { color: '#dc2626', bg: '#fef2f2', border: '#fca5a5', label: 'Critical', icon: '🔴' },
@@ -39,7 +40,7 @@ const StatCard = ({ icon, label, value, color, bg, border, sub }) => (
 );
 
 /* ── Alert row ─────────────────────────────────────────── */
-const AlertRow = ({ alert, onAck, onStatus }) => {
+const AlertRow = ({ alert, onAck, onStatus, canEdit }) => {
   const s = sev(alert.severity);
   const st = stc(alert.status);
   return (
@@ -64,34 +65,38 @@ const AlertRow = ({ alert, onAck, onStatus }) => {
             background: st.bg, color: st.color,
           }}>{st.label}</span>
           {alert.acknowledged && (
-            <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>✓ Acknowledged</span>
+            <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
+              ✓ Acknowledged{alert.acknowledgedByName ? ` by ${alert.acknowledgedByName}` : ''}
+            </span>
           )}
         </div>
 
-        {/* action buttons */}
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          {!alert.acknowledged && (
-            <button onClick={() => onAck(alert.id)} style={{
-              padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0',
-              background: '#f8fafc', color: '#374151', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer',
-            }}>✓ Acknowledge</button>
-          )}
-          {alert.status === 'OPEN' && (
-            <button onClick={() => onStatus(alert.id, 'IN_PROGRESS')} style={{
-              padding: '6px 14px', borderRadius: 8,
-              background: '#fffbeb', color: '#d97706', fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', border: '1px solid #fcd34d',
-            }}>In Progress</button>
-          )}
-          {alert.status === 'IN_PROGRESS' && (
-            <button onClick={() => onStatus(alert.id, 'RESOLVED')} style={{
-              padding: '6px 14px', borderRadius: 8,
-              background: '#f0fdf4', color: '#16a34a', fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', border: '1px solid #86efac',
-            }}>Resolve</button>
-          )}
-        </div>
+        {/* action buttons — technician only */}
+        {canEdit && (
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            {!alert.acknowledged && (
+              <button onClick={() => onAck(alert.id)} style={{
+                padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0',
+                background: '#f8fafc', color: '#374151', fontSize: 12, fontWeight: 700,
+                cursor: 'pointer',
+              }}>✓ Acknowledge</button>
+            )}
+            {alert.status === 'OPEN' && (
+              <button onClick={() => onStatus(alert.id, 'IN_PROGRESS')} style={{
+                padding: '6px 14px', borderRadius: 8,
+                background: '#fffbeb', color: '#d97706', fontSize: 13, fontWeight: 700,
+                cursor: 'pointer', border: '1px solid #fcd34d',
+              }}>In Progress</button>
+            )}
+            {alert.status === 'IN_PROGRESS' && (
+              <button onClick={() => onStatus(alert.id, 'RESOLVED')} style={{
+                padding: '6px 14px', borderRadius: 8,
+                background: '#f0fdf4', color: '#16a34a', fontSize: 13, fontWeight: 700,
+                cursor: 'pointer', border: '1px solid #86efac',
+              }}>Resolve</button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* fault + message */}
@@ -112,7 +117,9 @@ const AlertRow = ({ alert, onAck, onStatus }) => {
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: '#94a3b8' }}>
         <span>Created: {fmt(alert.createdAt)}</span>
         {alert.resolvedAt && <span>Resolved: {fmt(alert.resolvedAt)}</span>}
-        {alert.acknowledged && <span>Acked: {fmt(alert.acknowledgedAt)}</span>}
+        {alert.acknowledged && (
+          <span>Acked: {fmt(alert.acknowledgedAt)}{alert.acknowledgedByName ? ` by ${alert.acknowledgedByName}` : ''}</span>
+        )}
       </div>
 
       {alert.technicianNotes && (
@@ -129,6 +136,8 @@ const AlertRow = ({ alert, onAck, onStatus }) => {
 
 /* ── Main ──────────────────────────────────────────────── */
 const Alerts = () => {
+  const { user } = useAuth();
+  const canEdit = user?.role === 'TECHNICIAN';
   const [alerts, setAlerts] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -283,7 +292,7 @@ const Alerts = () => {
         ) : (
           <div>
             {filtered.map(a => (
-              <AlertRow key={a.id} alert={a} onAck={handleAck} onStatus={handleStatus} />
+              <AlertRow key={a.id} alert={a} onAck={handleAck} onStatus={handleStatus} canEdit={canEdit} />
             ))}
           </div>
         )}

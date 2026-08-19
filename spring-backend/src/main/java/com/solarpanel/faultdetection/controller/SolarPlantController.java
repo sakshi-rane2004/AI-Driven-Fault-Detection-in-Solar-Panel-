@@ -23,6 +23,7 @@ public class SolarPlantController {
     private final SolarPlantService plantService;
     
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','VIEWER')")
     public ResponseEntity<SolarPlantResponse> createPlant(@Valid @RequestBody SolarPlantRequest request) {
         log.info("REST request to create solar plant: {}", request.getName());
         SolarPlantResponse response = plantService.createPlant(request);

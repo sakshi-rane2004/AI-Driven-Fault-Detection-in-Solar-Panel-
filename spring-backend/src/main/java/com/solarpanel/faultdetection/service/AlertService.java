@@ -28,11 +28,13 @@ public class AlertService {
 
     private Collection<String> getUserPanelIds() {
         Optional<User> cu = userService.getCurrentUser();
-        if (cu.isPresent() && cu.get().getRole() != User.Role.ADMIN) {
+        if (cu.isPresent() && cu.get().getRole() != User.Role.ADMIN
+                           && cu.get().getRole() != User.Role.TECHNICIAN) {
+            // Only non-admin, non-technician users (i.e. VIEWERs) are scoped to their own panels
             return panelRepository.findByPlantUserId(cu.get().getId())
                     .stream().map(SolarPanel::getPanelId).collect(Collectors.toList());
         }
-        return null;
+        return null; // admin and technician see all alerts
     }
 
     @Transactional(readOnly = true)
@@ -89,6 +91,17 @@ public class AlertService {
         alert.setAcknowledged(true);
         alert.setAcknowledgedAt(LocalDateTime.now());
         alert.setAcknowledgedBy(userId);
+
+        // Resolve technician name from the current logged-in user
+        Optional<User> techUser = userService.getCurrentUser();
+        if (techUser.isPresent()) {
+            User u = techUser.get();
+            String name = (u.getFirstName() != null && !u.getFirstName().isBlank())
+                    ? u.getFirstName() + (u.getLastName() != null ? " " + u.getLastName() : "")
+                    : u.getUsername();
+            alert.setAcknowledgedByName(name.trim());
+        }
+
         return mapToResponse(alertRepository.save(alert));
     }
 
@@ -139,6 +152,7 @@ public class AlertService {
         r.setAcknowledged(alert.getAcknowledged());
         r.setAcknowledgedAt(alert.getAcknowledgedAt());
         r.setAcknowledgedBy(alert.getAcknowledgedBy());
+        r.setAcknowledgedByName(alert.getAcknowledgedByName());
         r.setAssignedTechnicianId(alert.getAssignedTechnicianId());
         r.setTechnicianNotes(alert.getTechnicianNotes());
         return r;

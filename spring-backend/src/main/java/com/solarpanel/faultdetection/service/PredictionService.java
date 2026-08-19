@@ -4,10 +4,14 @@ import com.solarpanel.faultdetection.dto.MLApiResponse;
 import com.solarpanel.faultdetection.dto.PredictionResponse;
 import com.solarpanel.faultdetection.dto.SensorDataRequest;
 import com.solarpanel.faultdetection.entity.PredictionResult;
+import com.solarpanel.faultdetection.entity.SolarPanel;
+import com.solarpanel.faultdetection.entity.User;
 import com.solarpanel.faultdetection.repository.PredictionResultRepository;
+import com.solarpanel.faultdetection.repository.SolarPanelRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,11 +40,40 @@ public class PredictionService {
     
     @Autowired
     private SeverityAssessmentService severityAssessmentService;
+
+    @Autowired
+    @Lazy
+    private UserService userService;
+
+    @Autowired
+    private SolarPanelRepository solarPanelRepository;
+
+    /**
+     * Returns panel IDs for the current non-admin user, or null for admins (meaning show all).
+     */
+    private Collection<String> getUserPanelIds() {
+        Optional<User> cu = userService.getCurrentUser();
+        // ADMIN and TECHNICIAN see all data
+        if (cu.isPresent()
+                && cu.get().getRole() != User.Role.ADMIN
+                && cu.get().getRole() != User.Role.TECHNICIAN) {
+            return solarPanelRepository.findByPlantUserId(cu.get().getId())
+                    .stream().map(SolarPanel::getPanelId).collect(Collectors.toList());
+        }
+        return null; // null = no filter = see everything
+    }
     
     /**
-     * Analyze sensor data and return prediction result
+     * Analyze sensor data and return prediction result (no panelId).
      */
     public PredictionResponse analyzeSensorData(SensorDataRequest sensorData) {
+        return analyzeSensorData(sensorData, null);
+    }
+
+    /**
+     * Analyze sensor data and return prediction result, associating the result with the given panelId.
+     */
+    public PredictionResponse analyzeSensorData(SensorDataRequest sensorData, String panelId) {
         logger.info("Starting analysis for sensor data: {}", sensorData);
         
         try {
@@ -48,6 +82,7 @@ public class PredictionService {
             
             // Create and save prediction result
             PredictionResult predictionResult = createPredictionResult(sensorData, mlResponse);
+            predictionResult.setPanelId(panelId);
             PredictionResult savedResult = predictionRepository.save(predictionResult);
             
             logger.info("Prediction result saved with ID: {}", savedResult.getId());
@@ -69,8 +104,15 @@ public class PredictionService {
     @Transactional(readOnly = true)
     public List<PredictionResponse> getAllPredictions() {
         logger.info("Retrieving all prediction history");
-        
-        List<PredictionResult> results = predictionRepository.findAllByOrderByCreatedAtDesc();
+
+        Collection<String> panelIds = getUserPanelIds();
+        List<PredictionResult> results;
+        if (panelIds != null) {
+            results = panelIds.isEmpty() ? List.of()
+                    : predictionRepository.findByPanelIdInOrderByCreatedAtDesc(panelIds);
+        } else {
+            results = predictionRepository.findAllByOrderByCreatedAtDesc();
+        }
         
         return results.stream()
                 .map(this::convertToResponse)
@@ -83,9 +125,16 @@ public class PredictionService {
     @Transactional(readOnly = true)
     public Page<PredictionResponse> getPaginatedPredictions(int page, int size) {
         logger.info("Retrieving paginated predictions - page: {}, size: {}", page, size);
-        
+
         Pageable pageable = PageRequest.of(page, size);
-        Page<PredictionResult> results = predictionRepository.findAllByOrderByCreatedAtDesc(pageable);
+        Collection<String> panelIds = getUserPanelIds();
+        Page<PredictionResult> results;
+        if (panelIds != null) {
+            results = panelIds.isEmpty() ? Page.empty(pageable)
+                    : predictionRepository.findByPanelIdIn(panelIds, pageable);
+        } else {
+            results = predictionRepository.findAllByOrderByCreatedAtDesc(pageable);
+        }
         
         return results.map(this::convertToResponse);
     }
@@ -96,8 +145,15 @@ public class PredictionService {
     @Transactional(readOnly = true)
     public List<PredictionResponse> getPredictionsByFaultType(String faultType) {
         logger.info("Retrieving predictions for fault type: {}", faultType);
-        
+
+        Collection<String> panelIds = getUserPanelIds();
         List<PredictionResult> results = predictionRepository.findByPredictedFaultOrderByCreatedAtDesc(faultType);
+        if (panelIds != null) {
+            final Collection<String> ids = panelIds;
+            results = results.stream()
+                    .filter(p -> ids.contains(p.getPanelId()))
+                    .collect(Collectors.toList());
+        }
         
         return results.stream()
                 .map(this::convertToResponse)
@@ -110,8 +166,15 @@ public class PredictionService {
     @Transactional(readOnly = true)
     public List<PredictionResponse> getPredictionsBySeverity(String severity) {
         logger.info("Retrieving predictions for severity: {}", severity);
-        
+
+        Collection<String> panelIds = getUserPanelIds();
         List<PredictionResult> results = predictionRepository.findBySeverityOrderByCreatedAtDesc(severity);
+        if (panelIds != null) {
+            final Collection<String> ids = panelIds;
+            results = results.stream()
+                    .filter(p -> ids.contains(p.getPanelId()))
+                    .collect(Collectors.toList());
+        }
         
         return results.stream()
                 .map(this::convertToResponse)

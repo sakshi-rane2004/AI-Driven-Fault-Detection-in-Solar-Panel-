@@ -54,9 +54,13 @@ public class SolarPanelService {
     public List<SolarPanelResponse> getAllPanels() {
         Optional<User> cu = userService.getCurrentUser();
         List<SolarPanel> panels;
-        if (cu.isPresent() && cu.get().getRole() != User.Role.ADMIN) {
+        if (cu.isPresent()
+                && cu.get().getRole() != User.Role.ADMIN
+                && cu.get().getRole() != User.Role.TECHNICIAN) {
+            // Viewer: only see their own plants' panels
             panels = panelRepository.findByPlantUserId(cu.get().getId());
         } else {
+            // Admin and Technician: see all panels
             panels = panelRepository.findAll();
         }
         return panels.stream()

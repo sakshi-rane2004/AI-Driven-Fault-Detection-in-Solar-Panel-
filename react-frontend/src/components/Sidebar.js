@@ -49,12 +49,20 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
 
   const isActive = (path) => location.pathname === path;
 
+  const isAdmin = user?.role === 'ADMIN';
+  const isTech = user?.role === 'TECHNICIAN';
+  const isViewer = user?.role === 'VIEWER';
+
   const menuItems = [
     { path: '/', icon: 'dashboard', label: 'Dashboard', show: true },
+    // Panels: all roles can view (technician read-only)
     { path: '/panels', icon: 'panels', label: 'Panels', show: true },
-    { path: '/alerts', icon: 'alerts', label: 'Alerts', show: true },
-    { path: '/plants', icon: 'plants', label: 'Plants', show: true },
-    { path: '/analyze', icon: 'analyze', label: 'Analyze', show: true },
+    // Plants: Admin and Viewer (owners) only
+    { path: '/plants', icon: 'plants', label: 'Plants', show: isAdmin || isViewer },
+    // Alerts: Admin and Technician
+    { path: '/alerts', icon: 'alerts', label: 'Alerts', show: isAdmin || isTech },
+    { path: '/analyze', icon: 'analyze', label: 'Analyze', show: isAdmin || isViewer },
+    // Reports & Analytics: everyone
     { path: '/history', icon: 'reports', label: 'Reports', show: true },
     { path: '/analytics', icon: 'analytics', label: 'Analytics', show: true },
     { path: '/settings', icon: 'settings', label: 'Settings', show: canAccessSettings() },

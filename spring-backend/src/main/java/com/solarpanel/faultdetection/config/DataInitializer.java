@@ -33,6 +33,15 @@ public class DataInitializer implements CommandLineRunner {
     
     private void initializeDefaultUsers() {
         logger.info("Initializing default users...");
+
+        // ── Migrate old demo_ usernames to clean names ──────────────────
+        try {
+            migrateUsername("demo_admin",      "admin");
+            migrateUsername("demo_technician", "technician");
+            migrateUsername("demo_viewer",     "viewer");
+        } catch (Exception e) {
+            logger.warn("Migration step failed: {}", e.getMessage());
+        }
         
         try {
             // Create default admin user
@@ -92,58 +101,61 @@ public class DataInitializer implements CommandLineRunner {
         }
         
         try {
-            // Create demo users with simpler passwords for testing
-            if (!userRepository.existsByUsername("demo_admin")) {
+            if (!userRepository.existsByUsername("admin")) {
                 User demoAdmin = new User();
-                demoAdmin.setUsername("demo_admin");
+                demoAdmin.setUsername("admin");
                 demoAdmin.setEmail("demo.admin@solarpanel.com");
                 demoAdmin.setPassword(passwordEncoder.encode("DemoAdmin123"));
                 demoAdmin.setRole(User.Role.ADMIN);
-                demoAdmin.setFirstName("Demo");
-                demoAdmin.setLastName("Admin");
+                demoAdmin.setFirstName("Admin");
+                demoAdmin.setLastName("User");
                 demoAdmin.setEnabled(true);
-                
                 userRepository.save(demoAdmin);
-                logger.info("Created demo admin user: demo_admin");
+                logger.info("Created admin user: admin");
+            } else if (userRepository.existsByUsername("demo_admin")) {
+                // rename demo_admin -> admin if admin doesn't exist but demo_admin does
+                userRepository.findByUsername("demo_admin").ifPresent(u -> {
+                    u.setUsername("admin");
+                    userRepository.save(u);
+                });
             }
         } catch (Exception e) {
-            logger.warn("Could not check/create demo_admin user: {}", e.getMessage());
+            logger.warn("Could not check/create admin user: {}", e.getMessage());
         }
-        
+
         try {
-            if (!userRepository.existsByUsername("demo_technician")) {
-                User demoTechnician = new User();
-                demoTechnician.setUsername("demo_technician");
-                demoTechnician.setEmail("demo.technician@solarpanel.com");
-                demoTechnician.setPassword(passwordEncoder.encode("DemoTech123"));
-                demoTechnician.setRole(User.Role.TECHNICIAN);
-                demoTechnician.setFirstName("Demo");
-                demoTechnician.setLastName("Technician");
-                demoTechnician.setEnabled(true);
-                
-                userRepository.save(demoTechnician);
-                logger.info("Created demo technician user: demo_technician");
+            if (!userRepository.existsByUsername("technician")) {
+                User demoTech = new User();
+                demoTech.setUsername("technician");
+                demoTech.setEmail("demo.technician@solarpanel.com");
+                demoTech.setPassword(passwordEncoder.encode("DemoTech123"));
+                demoTech.setRole(User.Role.TECHNICIAN);
+                demoTech.setFirstName("Technician");
+                demoTech.setLastName("User");
+                demoTech.setEnabled(true);
+                userRepository.save(demoTech);
+                logger.info("Created technician user: technician");
             }
         } catch (Exception e) {
-            logger.warn("Could not check/create demo_technician user: {}", e.getMessage());
+            logger.warn("Could not check/create technician user: {}", e.getMessage());
         }
-        
+
         try {
-            if (!userRepository.existsByUsername("demo_viewer")) {
+            if (!userRepository.existsByUsername("viewer")) {
                 User demoViewer = new User();
-                demoViewer.setUsername("demo_viewer");
+                demoViewer.setUsername("viewer");
                 demoViewer.setEmail("demo.viewer@solarpanel.com");
                 demoViewer.setPassword(passwordEncoder.encode("DemoViewer123"));
                 demoViewer.setRole(User.Role.VIEWER);
-                demoViewer.setFirstName("Demo");
-                demoViewer.setLastName("Viewer");
+                demoViewer.setFirstName("Viewer");
+                demoViewer.setLastName("User");
                 demoViewer.setEnabled(true);
                 
                 userRepository.save(demoViewer);
-                logger.info("Created demo viewer user: demo_viewer");
+                logger.info("Created viewer user: viewer");
             }
         } catch (Exception e) {
-            logger.warn("Could not check/create demo_viewer user: {}", e.getMessage());
+            logger.warn("Could not check/create viewer user: {}", e.getMessage());
         }
         
         logger.info("Default users initialization completed");
@@ -162,6 +174,17 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
     
+    /** Rename oldName → newName only if oldName exists and newName does NOT exist yet. */
+    private void migrateUsername(String oldName, String newName) {
+        if (userRepository.existsByUsername(oldName) && !userRepository.existsByUsername(newName)) {
+            userRepository.findByUsername(oldName).ifPresent(u -> {
+                u.setUsername(newName);
+                userRepository.save(u);
+                logger.info("Renamed user '{}' → '{}'", oldName, newName);
+            });
+        }
+    }
+
     private void initializeDefaultPlants() {
         logger.info("Initializing default solar plants...");
         

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { panelAPI, plantAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 /* ── animations ─────────────────────────────────────────── */
 const STYLES = `
@@ -79,6 +80,8 @@ const SensorCard = ({ label, value }) => (
 
 /* ── Main component ──────────────────────────────────────── */
 const Panels = () => {
+  const { user } = useAuth();
+  const canAddPanel = user?.role === 'ADMIN' || user?.role === 'VIEWER';
   const [panels, setPanels] = useState([]);
   const [plants, setPlants] = useState([]);
   const [selectedPanel, setSelected] = useState(null);
@@ -99,7 +102,14 @@ const Panels = () => {
 
   useEffect(() => { fetchPlants(); fetchPanels(); }, []);
 
-  const fetchPlants = async () => { try { setPlants(await plantAPI.getAllPlants()); } catch (e) { } };
+  const fetchPlants = async () => {
+    try {
+      const data = await plantAPI.getAllPlants();
+      setPlants(data);
+    } catch (e) {
+      setError('Failed to load plants: ' + e.message);
+    }
+  };
   const fetchPanels = async () => {
     try {
       const d = await panelAPI.getAllPanels();
@@ -198,11 +208,13 @@ const Panels = () => {
                   <option value="MAINTENANCE" style={{ color: '#000' }}>Maintenance</option>
                   <option value="OFFLINE" style={{ color: '#000' }}>Offline</option>
                 </select>
-                <button onClick={() => setShowModal(true)} style={{
-                  padding: '9px 20px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                  background: '#0d9488', color: '#fff', fontWeight: 700, fontSize: 13,
-                  boxShadow: '0 4px 14px rgba(13,148,136,0.4)',
-                }}>+ Add Panel</button>
+                {canAddPanel && (
+                  <button onClick={() => { setError(null); fetchPlants(); setShowModal(true); }} style={{
+                    padding: '9px 20px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                    background: '#0d9488', color: '#fff', fontWeight: 700, fontSize: 13,
+                    boxShadow: '0 4px 14px rgba(13,148,136,0.4)',
+                  }}>+ Add Panel</button>
+                )}
               </div>
             </div>
           </div>
@@ -564,12 +576,25 @@ const Panels = () => {
 
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 5 }}>Solar Plant *</label>
-                  <select name="plantId" value={formData.plantId}
-                    onChange={e => setFormData(p => ({ ...p, plantId: e.target.value }))} required
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 9, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }}>
-                    <option value="">Select a plant</option>
-                    {plants.map(pl => <option key={pl.id} value={pl.id}>{pl.name} — {pl.location}</option>)}
-                  </select>
+                  {plants.length === 0 ? (
+                    <div style={{
+                      padding: '10px 12px', borderRadius: 9, border: '1px solid #fcd34d',
+                      background: '#fffbeb', color: '#92400e', fontSize: 13
+                    }}>
+                      No plants found.{' '}
+                      <a href="/plants" style={{ color: '#0d9488', fontWeight: 700 }}
+                        onClick={() => setShowModal(false)}>
+                        Create a plant first
+                      </a>
+                    </div>
+                  ) : (
+                    <select name="plantId" value={formData.plantId}
+                      onChange={e => setFormData(p => ({ ...p, plantId: e.target.value }))} required
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 9, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }}>
+                      <option value="">Select a plant</option>
+                      {plants.map(pl => <option key={pl.id} value={pl.id}>{pl.name} — {pl.location}</option>)}
+                    </select>
+                  )}
                 </div>
 
                 <div>

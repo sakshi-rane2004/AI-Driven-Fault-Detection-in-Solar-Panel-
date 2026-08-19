@@ -29,11 +29,13 @@ public class DashboardService {
     public DashboardStatsResponse getDashboardStats() {
         Optional<User> cu = userService.getCurrentUser();
         boolean isAdmin = cu.isEmpty() || cu.get().getRole() == User.Role.ADMIN;
+        boolean isTech  = cu.isPresent() && cu.get().getRole() == User.Role.TECHNICIAN;
+        boolean showAll = isAdmin || isTech;
         Long userId = cu.map(User::getId).orElse(null);
 
         DashboardStatsResponse stats = new DashboardStatsResponse();
 
-        if (isAdmin) {
+        if (showAll) {
             stats.setTotalPlants(plantRepository.count());
             stats.setTotalPanels(panelRepository.count());
             stats.setActivePanels(panelRepository.countByStatus(SolarPanel.PanelStatus.ACTIVE));

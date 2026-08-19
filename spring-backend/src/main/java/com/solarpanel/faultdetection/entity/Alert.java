@@ -54,6 +54,9 @@ public class Alert {
     
     @Column
     private Long acknowledgedBy;
+
+    @Column(length = 150)
+    private String acknowledgedByName;
     
     @Column
     private Long assignedTechnicianId;

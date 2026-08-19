@@ -118,21 +118,8 @@ const Login = () => {
           <span style={{ fontSize: 12, color: '#94a3b8' }}>Admin accounts are created by an Admin only</span>
         </p>
 
-        {/* Default credentials hint */}
-        <div style={{
-          background: '#f8fafc', borderRadius: 10, padding: '12px 14px', marginTop: 16,
-          border: '1px solid #e2e8f0',
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Default Credentials</div>
-          <div style={{ fontSize: 12, color: '#64748b', lineHeight: 2 }}>
-            <span style={{ fontFamily: 'monospace', background: '#e2e8f0', padding: '1px 5px', borderRadius: 4 }}>demo_admin</span> / <span style={{ fontFamily: 'monospace', background: '#e2e8f0', padding: '1px 5px', borderRadius: 4 }}>DemoAdmin123</span>
-            <span style={{ marginLeft: 8, fontSize: 11, color: '#ef4444', fontWeight: 700 }}>ADMIN</span><br />
-            <span style={{ fontFamily: 'monospace', background: '#e2e8f0', padding: '1px 5px', borderRadius: 4 }}>demo_technician</span> / <span style={{ fontFamily: 'monospace', background: '#e2e8f0', padding: '1px 5px', borderRadius: 4 }}>DemoTech123</span>
-            <span style={{ marginLeft: 8, fontSize: 11, color: '#f59e0b', fontWeight: 700 }}>TECHNICIAN</span><br />
-            <span style={{ fontFamily: 'monospace', background: '#e2e8f0', padding: '1px 5px', borderRadius: 4 }}>demo_viewer</span> / <span style={{ fontFamily: 'monospace', background: '#e2e8f0', padding: '1px 5px', borderRadius: 4 }}>DemoViewer123</span>
-            <span style={{ marginLeft: 8, fontSize: 11, color: '#10b981', fontWeight: 700 }}>VIEWER</span>
-          </div>
-        </div>
+
+
       </div>
     </div>
   );

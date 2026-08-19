@@ -14,6 +14,9 @@ public class PredictionResult {
     @Column(name = "voltage", nullable = false)
     private Double voltage;
     
+    @Column(name = "panel_id", length = 50)
+    private String panelId;
+    
     @Column(name = "current", nullable = false)
     private Double current;
     
@@ -74,13 +77,11 @@ public class PredictionResult {
     }
     
     // Getters and Setters
-    public Long getId() {
-        return id;
-    }
-    
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getPanelId() { return panelId; }
+    public void setPanelId(String panelId) { this.panelId = panelId; }
     
     public Double getVoltage() {
         return voltage;

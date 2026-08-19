@@ -49,7 +49,7 @@ public class AlertController {
     }
     
     @PostMapping("/{id}/acknowledge")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIAN')")
+    @PreAuthorize("hasRole('TECHNICIAN')")
     public ResponseEntity<AlertResponse> acknowledgeAlert(
             @PathVariable Long id,
             @RequestParam(required = false) Long userId) {
@@ -86,7 +86,7 @@ public class AlertController {
     }
     
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIAN')")
+    @PreAuthorize("hasRole('TECHNICIAN')")
     public ResponseEntity<AlertResponse> updateAlertStatus(
             @PathVariable Long id,
             @RequestParam String status,

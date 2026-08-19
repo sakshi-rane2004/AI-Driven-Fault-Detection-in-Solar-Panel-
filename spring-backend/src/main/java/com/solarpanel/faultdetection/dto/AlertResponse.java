@@ -23,6 +23,7 @@ public class AlertResponse {
     private Boolean acknowledged;
     private LocalDateTime acknowledgedAt;
     private Long acknowledgedBy;
+    private String acknowledgedByName;
     private Long assignedTechnicianId;
     private String technicianNotes;
 }

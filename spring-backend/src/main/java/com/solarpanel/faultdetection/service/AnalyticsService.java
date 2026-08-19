@@ -4,10 +4,14 @@ import com.solarpanel.faultdetection.dto.AnalyticsSummaryResponse;
 import com.solarpanel.faultdetection.dto.AnalyticsTrendsResponse;
 import com.solarpanel.faultdetection.dto.TrendDataPoint;
 import com.solarpanel.faultdetection.entity.PredictionResult;
+import com.solarpanel.faultdetection.entity.SolarPanel;
+import com.solarpanel.faultdetection.entity.User;
 import com.solarpanel.faultdetection.repository.PredictionResultRepository;
+import com.solarpanel.faultdetection.repository.SolarPanelRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +28,28 @@ public class AnalyticsService {
     
     @Autowired
     private PredictionResultRepository predictionRepository;
+
+    @Autowired
+    @Lazy
+    private UserService userService;
+
+    @Autowired
+    private SolarPanelRepository solarPanelRepository;
+
+    /**
+     * Returns panel IDs for the current non-admin user, or null for admins (meaning show all).
+     */
+    private Collection<String> getUserPanelIds() {
+        Optional<User> cu = userService.getCurrentUser();
+        // ADMIN and TECHNICIAN see all panels/data
+        if (cu.isPresent()
+                && cu.get().getRole() != User.Role.ADMIN
+                && cu.get().getRole() != User.Role.TECHNICIAN) {
+            return solarPanelRepository.findByPlantUserId(cu.get().getId())
+                    .stream().map(SolarPanel::getPanelId).collect(Collectors.toList());
+        }
+        return null;
+    }
     
     /**
      * Get comprehensive analytics summary
@@ -32,14 +58,27 @@ public class AnalyticsService {
         logger.info("Generating analytics summary");
         
         try {
-            // Get total predictions count
-            long totalPredictions = predictionRepository.count();
-            
-            // Get fault type counts
-            Map<String, Long> faultTypeCounts = getFaultTypeCounts();
-            
-            // Get severity counts
-            Map<String, Long> severityCounts = getSeverityCounts();
+            Collection<String> panelIds = getUserPanelIds();
+
+            long totalPredictions;
+            Map<String, Long> faultTypeCounts;
+            Map<String, Long> severityCounts;
+
+            if (panelIds != null) {
+                // Non-admin: scope to user's panels
+                List<PredictionResult> userPredictions = panelIds.isEmpty() ? List.of()
+                        : predictionRepository.findByPanelIdInOrderByCreatedAtDesc(panelIds);
+                totalPredictions = userPredictions.size();
+                faultTypeCounts = userPredictions.stream()
+                        .collect(Collectors.groupingBy(PredictionResult::getPredictedFault, Collectors.counting()));
+                severityCounts = userPredictions.stream()
+                        .collect(Collectors.groupingBy(PredictionResult::getSeverity, Collectors.counting()));
+            } else {
+                // Admin: use aggregation queries
+                totalPredictions = predictionRepository.count();
+                faultTypeCounts = getFaultTypeCounts();
+                severityCounts = getSeverityCounts();
+            }
             
             // Calculate percentages
             Map<String, Double> faultTypePercentages = calculatePercentages(faultTypeCounts, totalPredictions);
@@ -85,9 +124,16 @@ public class AnalyticsService {
             // Get predictions in date range
             LocalDateTime startDateTime = startDate.atStartOfDay();
             LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
-            
-            List<PredictionResult> predictions = predictionRepository
-                .findByCreatedAtBetweenOrderByCreatedAtDesc(startDateTime, endDateTime);
+
+            Collection<String> panelIds = getUserPanelIds();
+            List<PredictionResult> predictions;
+            if (panelIds != null) {
+                predictions = panelIds.isEmpty() ? List.of()
+                        : predictionRepository.findByPanelIdsAndDateRange(panelIds, startDateTime, endDateTime);
+            } else {
+                predictions = predictionRepository
+                        .findByCreatedAtBetweenOrderByCreatedAtDesc(startDateTime, endDateTime);
+            }
             
             // Group predictions by date
             Map<LocalDate, List<PredictionResult>> predictionsByDate = predictions.stream()

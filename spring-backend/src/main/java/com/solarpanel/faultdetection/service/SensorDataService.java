@@ -57,7 +57,7 @@ public class SensorDataService {
         // 3. Call ML API — degrade gracefully if unavailable
         PredictionResponse prediction;
         try {
-            prediction = predictionService.analyzeSensorData(req);
+            prediction = predictionService.analyzeSensorData(req, dto.getPanelId());
             log.info("ML prediction: {} - {}", prediction.getPredictedFault(), prediction.getSeverity());
         } catch (Exception e) {
             log.warn("ML API unavailable — sensor data saved without prediction: {}", e.getMessage());

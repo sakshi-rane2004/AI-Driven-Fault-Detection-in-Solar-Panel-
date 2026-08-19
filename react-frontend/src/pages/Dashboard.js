@@ -269,25 +269,28 @@ const Dashboard = () => {
                     <ActionCard to="/admin/users" iconKey="manage" title="Manage Users" desc="Create & manage accounts" accent="#06b6d4" delay={0.60} />
                   </>}
 
-                  {/* TECHNICIAN */}
+                  {/* TECHNICIAN — view panels + manage alerts + reports/analytics for all users */}
                   {role === 'TECHNICIAN' && <>
-                    <ActionCard to="/panels" iconKey="panel" title="View Panels" desc="Monitor solar panels" accent="#3b82f6" delay={0.35} />
-                    <ActionCard to="/panels" iconKey="panel" title="Add Panel" desc="Register a solar panel" accent="#0d9488" delay={0.40} />
-                    <ActionCard to="/alerts" iconKey="alert" title="View Alerts" desc="Check & manage alerts" accent="#ef4444" delay={0.45} />
-                    <ActionCard to="/analyze" iconKey="search" title="Run Analysis" desc="AI fault detection" accent="#8b5cf6" delay={0.50} />
+                    <ActionCard to="/panels" iconKey="panel" title="View Panels" desc="Monitor all panels" accent="#3b82f6" delay={0.35} />
+                    <ActionCard to="/alerts" iconKey="alert" title="All Alerts" desc="Manage fault alerts" accent="#ef4444" delay={0.40} />
+                    <ActionCard to="/history" iconKey="chart" title="Reports" desc="All prediction history" accent="#f59e0b" delay={0.45} />
+                    <ActionCard to="/analytics" iconKey="chart" title="Analytics" desc="System-wide trends" accent="#06b6d4" delay={0.50} />
                   </>}
 
-                  {/* VIEWER */}
+                  {/* VIEWER — same full set, data scoped server-side */}
                   {role === 'VIEWER' && <>
-                    <ActionCard to="/panels" iconKey="panel" title="View Panels" desc="Monitor solar panels" accent="#3b82f6" delay={0.35} />
-                    <ActionCard to="/alerts" iconKey="alert" title="View Alerts" desc="Check system alerts" accent="#ef4444" delay={0.40} />
-                    <ActionCard to="/analyze" iconKey="search" title="Run Analysis" desc="AI fault detection" accent="#8b5cf6" delay={0.45} />
+                    <ActionCard to="/panels" iconKey="panel" title="My Panels" desc="View your panels" accent="#3b82f6" delay={0.35} />
+                    <ActionCard to="/plants" iconKey="plant" title="My Plants" desc="View your plants" accent="#0d9488" delay={0.40} />
+                    <ActionCard to="/alerts" iconKey="alert" title="My Alerts" desc="Your fault alerts" accent="#ef4444" delay={0.45} />
+                    <ActionCard to="/analyze" iconKey="search" title="Analyze" desc="Run fault detection" accent="#8b5cf6" delay={0.50} />
+                    <ActionCard to="/history" iconKey="chart" title="Reports" desc="Prediction history" accent="#f59e0b" delay={0.55} />
+                    <ActionCard to="/analytics" iconKey="chart" title="Analytics" desc="Trends & insights" accent="#06b6d4" delay={0.60} />
                   </>}
 
-                  {/* Fallback if role unknown */}
+                  {/* Fallback */}
                   {!role && <>
-                    <ActionCard to="/panels" iconKey="panel" title="View Panels" desc="Monitor solar panels" accent="#3b82f6" delay={0.35} />
-                    <ActionCard to="/alerts" iconKey="alert" title="View Alerts" desc="Check system alerts" accent="#ef4444" delay={0.40} />
+                    <ActionCard to="/panels" iconKey="panel" title="My Panels" desc="View your panels" accent="#3b82f6" delay={0.35} />
+                    <ActionCard to="/alerts" iconKey="alert" title="My Alerts" desc="Your fault alerts" accent="#ef4444" delay={0.40} />
                   </>}
                 </div>
               </div>

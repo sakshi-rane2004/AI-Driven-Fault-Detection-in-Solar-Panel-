@@ -18,6 +18,25 @@ public interface PredictionResultRepository extends JpaRepository<PredictionResu
      * Find all predictions ordered by creation date (most recent first)
      */
     List<PredictionResult> findAllByOrderByCreatedAtDesc();
+
+    List<PredictionResult> findByPanelIdInOrderByCreatedAtDesc(java.util.Collection<String> panelIds);
+
+    @Query("SELECT p FROM PredictionResult p WHERE p.panelId IN :panelIds ORDER BY p.createdAt DESC")
+    org.springframework.data.domain.Page<PredictionResult> findByPanelIdIn(
+            @Param("panelIds") java.util.Collection<String> panelIds,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT p.predictedFault, COUNT(p) FROM PredictionResult p WHERE p.panelId IN :ids GROUP BY p.predictedFault")
+    List<Object[]> countByFaultTypeForPanels(@Param("ids") java.util.Collection<String> ids);
+
+    @Query("SELECT p.severity, COUNT(p) FROM PredictionResult p WHERE p.panelId IN :ids GROUP BY p.severity")
+    List<Object[]> countBySeverityForPanels(@Param("ids") java.util.Collection<String> ids);
+
+    @Query("SELECT p FROM PredictionResult p WHERE p.panelId IN :ids AND p.createdAt BETWEEN :start AND :end ORDER BY p.createdAt DESC")
+    List<PredictionResult> findByPanelIdsAndDateRange(
+            @Param("ids") java.util.Collection<String> ids,
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
     
     /**
      * Find predictions by fault type
