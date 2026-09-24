@@ -24,6 +24,10 @@ wheels/
 *.egg
 *.pkl
 
+# ML model files required for deployment
+!models/
+!models/*.pkl
+
 # Java / Maven / Spring Boot
 target/
 !.mvn/wrapper/maven-wrapper.jar
